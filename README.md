@@ -1,0 +1,2 @@
+# NOVA
+server noyau django
