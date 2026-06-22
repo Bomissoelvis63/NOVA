@@ -1,0 +1,11 @@
+# Dependances Python minimales du projet NOVA.
+# Elles installent Django, DRF, JWT et le connecteur PostgreSQL.
+# Elles ajoutent CORS pour les futurs clients web ou mobiles.
+# Elles incluent Gunicorn pour un deploiement serveur standard.
+# Son but est de rendre l'installation reproductible et compacte.
+Django==5.0.8
+djangorestframework==3.15.2
+djangorestframework-simplejwt==5.3.1
+psycopg[binary]==3.2.1
+django-cors-headers==4.4.0
+gunicorn==22.0.0
