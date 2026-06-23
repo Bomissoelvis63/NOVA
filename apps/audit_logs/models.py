@@ -8,7 +8,12 @@ from django.db import models
 
 
 class AuditLog(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+    )
     action = models.CharField(max_length=80)
     path = models.CharField(max_length=255)
     method = models.CharField(max_length=12)

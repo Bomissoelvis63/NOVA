@@ -3,7 +3,13 @@
 # Il ignore les routes admin et fichiers statiques pour limiter le bruit.
 # Il capture l'utilisateur, l'adresse IP et le user-agent.
 # Son but est d'assurer une visibilite minimale sur les acces.
+import logging
+
+from django.db import DatabaseError
+
 from .models import AuditLog
+
+logger = logging.getLogger(__name__)
 
 
 class AuditLogMiddleware:
@@ -15,16 +21,24 @@ class AuditLogMiddleware:
         if request.path.startswith(("/admin/", "/static/")):
             return response
 
-        user = request.user if getattr(request, "user", None) and request.user.is_authenticated else None
-        AuditLog.objects.create(
-            user=user,
-            action=self._action(request),
-            path=request.path[:255],
-            method=request.method,
-            status_code=response.status_code,
-            ip_address=self._ip(request),
-            user_agent=request.META.get("HTTP_USER_AGENT", "")[:255],
-        )
+        try:
+            user = (
+                request.user
+                if getattr(request, "user", None) and request.user.is_authenticated
+                else None
+            )
+            AuditLog.objects.create(
+                user=user,
+                action=self._action(request),
+                path=request.path[:255],
+                method=request.method,
+                status_code=response.status_code,
+                ip_address=self._ip(request),
+                user_agent=request.META.get("HTTP_USER_AGENT", "")[:255],
+            )
+        except DatabaseError:
+            logger.exception("Unable to write audit log.")
+
         return response
 
     def _action(self, request):

@@ -15,6 +15,9 @@ class PermissionSerializer(serializers.ModelSerializer):
         fields = ("id", "code", "name", "description", "is_active", "created_at")
         read_only_fields = ("id", "created_at")
 
+    def validate_code(self, value):
+        return value.strip().lower()
+
 
 class RoleSerializer(serializers.ModelSerializer):
     permission_ids = serializers.PrimaryKeyRelatedField(
@@ -28,13 +31,28 @@ class RoleSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Role
-        fields = ("id", "key", "name", "description", "permissions", "permission_ids", "is_active", "created_at")
+        fields = (
+            "id",
+            "key",
+            "name",
+            "description",
+            "permissions",
+            "permission_ids",
+            "is_active",
+            "created_at",
+        )
         read_only_fields = ("id", "permissions", "created_at")
+
+    def validate_key(self, value):
+        return value.strip().lower()
 
 
 class AssignRoleSerializer(serializers.Serializer):
     user_id = serializers.UUIDField()
     role_key = serializers.SlugField()
+
+    def validate_role_key(self, value):
+        return value.strip().lower()
 
     def validate(self, attrs):
         User = get_user_model()

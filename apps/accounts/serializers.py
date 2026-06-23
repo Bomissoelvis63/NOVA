@@ -3,11 +3,14 @@
 # Ils valident l'inscription avec mot de passe hache par Django.
 # Ils limitent les champs modifiables pour proteger l'etat interne.
 # Son but est de convertir proprement users entre JSON et modeles.
+from typing import Any, cast
+
+from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
 from apps.authorization.serializers import RoleSerializer
 
-from .models import User
+from .models import User, UserManager
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -27,6 +30,14 @@ class RegisterSerializer(serializers.ModelSerializer):
         fields = ("id", "email", "password", "first_name", "last_name")
         read_only_fields = ("id",)
 
-    def create(self, validated_data):
+    def validate_email(self, value: str) -> str:
+        return value.lower()
+
+    def validate_password(self, value: str) -> str:
+        validate_password(value)
+        return value
+
+    def create(self, validated_data: dict[str, Any]) -> User:
         password = validated_data.pop("password")
-        return User.objects.create_user(password=password, **validated_data)
+        manager = cast(UserManager, User.objects)
+        return manager.create_user(password=password, **validated_data)

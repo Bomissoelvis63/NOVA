@@ -1,11 +1,13 @@
 # Configuration principale du backend NOVA.
-# Elle definit securite, apps, base PostgreSQL, DRF et JWT.
+# Elle definit securite, apps, base PostgreSQL, DRF, JWT et sessions.
 # Elle lit les variables d'environnement et un fichier .env local.
 # Elle active le user custom, le RBAC middleware et les audit logs.
 # Son but est de fournir un socle Django propre et pret production.
 from datetime import timedelta
 import os
 from pathlib import Path
+
+from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -35,9 +37,19 @@ def env_list(key, default=None):
     return [item.strip() for item in value.split(",") if item.strip()]
 
 
+def env_int(key, default):
+    try:
+        return int(os.getenv(key, str(default)))
+    except ValueError as exc:
+        raise ImproperlyConfigured(f"{key} doit etre un entier.") from exc
+
+
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "unsafe-dev-key-change-me")
-DEBUG = env_bool("DJANGO_DEBUG", False)
+DEBUG = env_bool("DJANGO_DEBUG", True)
 ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", ["127.0.0.1", "localhost"])
+
+if not DEBUG and SECRET_KEY == "unsafe-dev-key-change-me":
+    raise ImproperlyConfigured("DJANGO_SECRET_KEY doit etre defini en production.")
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -136,15 +148,23 @@ SIMPLE_JWT = {
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
+SESSION_ENGINE = "django.contrib.sessions.backends.db"
+SESSION_COOKIE_AGE = env_int("SESSION_COOKIE_AGE", 1209600)
+SESSION_SAVE_EVERY_REQUEST = env_bool("SESSION_SAVE_EVERY_REQUEST", False)
 SESSION_COOKIE_HTTPONLY = True
-SESSION_COOKIE_SAMESITE = "Lax"
-CSRF_COOKIE_HTTPONLY = True
-CSRF_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_SECURE = env_bool("SESSION_COOKIE_SECURE", not DEBUG)
+SESSION_COOKIE_SAMESITE = os.getenv("SESSION_COOKIE_SAMESITE", "Lax")
+CSRF_COOKIE_HTTPONLY = False
+CSRF_COOKIE_SECURE = env_bool("CSRF_COOKIE_SECURE", not DEBUG)
+CSRF_COOKIE_SAMESITE = os.getenv("CSRF_COOKIE_SAMESITE", "Lax")
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 CORS_ALLOWED_ORIGINS = env_list("CORS_ALLOWED_ORIGINS", [])
+CORS_ALLOW_CREDENTIALS = env_bool("CORS_ALLOW_CREDENTIALS", False)
+CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS", [])
 
 NOVA_RBAC_RULES = {
     "GET:/auth/me/": "auth.user.read",
+    "GET:/auth/session/me/": "auth.user.read",
     "POST:/authorization/users/assign-role/": "auth.roles.assign",
 }

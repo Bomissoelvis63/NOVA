@@ -14,7 +14,7 @@ class UserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
         if not email:
             raise ValueError("Email requis")
-        email = self.normalize_email(email)
+        email = self.normalize_email(email).lower()
         user = self.model(email=email, **extra_fields)
         user.set_password(password)
         user.save(using=self._db)
@@ -24,6 +24,12 @@ class UserManager(BaseUserManager):
         extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("is_superuser", True)
         extra_fields.setdefault("is_active", True)
+
+        if extra_fields.get("is_staff") is not True:
+            raise ValueError("Le superutilisateur doit avoir is_staff=True.")
+        if extra_fields.get("is_superuser") is not True:
+            raise ValueError("Le superutilisateur doit avoir is_superuser=True.")
+
         return self.create_user(email, password, **extra_fields)
 
 
@@ -50,6 +56,8 @@ class User(AbstractBaseUser, PermissionsMixin):
         return self.email
 
     def has_rbac_permission(self, code):
+        if not code or not self.is_active:
+            return False
         if self.is_superuser:
             return True
         return self.roles.filter(
