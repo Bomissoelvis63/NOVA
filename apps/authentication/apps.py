@@ -1,3 +1,4 @@
+# apps/authentication/apps.py
 # Configuration Django de l'application authentication.
 # Elle declare le module responsable des flux d'authentification.
 # Elle fixe le type de cle primaire par defaut pour l'app.

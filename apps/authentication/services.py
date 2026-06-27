@@ -1,3 +1,4 @@
+# apps/authentication/services.py
 # Services metier pour l'authentification NOVA.
 # Ils isolent la logique de login, logout et blacklist JWT.
 # Ils gardent les vues fines et orientees transport HTTP.

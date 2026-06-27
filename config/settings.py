@@ -63,8 +63,9 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt.token_blacklist",
     "apps.accounts",
     "apps.authentication",
-    "apps.authorization",
     "apps.audit_logs",
+    "apps.security.apps.SecurityConfig",
+    "apps.merchants",
 ]
 
 MIDDLEWARE = [
@@ -75,7 +76,7 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "apps.audit_logs.middleware.AuditLogMiddleware",
-    "apps.authorization.middleware.RBACMiddleware",
+    # "apps.authorization.middleware.RBACMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -100,15 +101,19 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
+
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("POSTGRES_DB", "nova"),
-        "USER": os.getenv("POSTGRES_USER", "nova"),
-        "PASSWORD": os.getenv("POSTGRES_PASSWORD", "nova"),
-        "HOST": os.getenv("POSTGRES_HOST", "127.0.0.1"),
-        "PORT": os.getenv("POSTGRES_PORT", "5432"),
+        "ENGINE": "django.db.backends.mysql",
+        "NAME": os.getenv("MYSQL_DB", "nova_eh"),
+        "USER": os.getenv("MYSQL_USER", "root"),
+        "PASSWORD": os.getenv("MYSQL_PASSWORD", ""),
+        "HOST": os.getenv("MYSQL_HOST", "127.0.0.1"),
+        "PORT": os.getenv("MYSQL_PORT", "3306"),
         "CONN_MAX_AGE": 60,
+        "OPTIONS": {
+            "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
+        },
     }
 }
 
@@ -139,32 +144,56 @@ REST_FRAMEWORK = {
     ),
 }
 
+# ==============================================================================
+# CONFIGURATION SIMPLE_JWT DYNAMIQUE (POUR LES TESTS EN MINUTES)
+# ==============================================================================
+JWT_ACCESS_MINUTES = env_int("JWT_ACCESS_TOKEN_LIFETIME_MINUTES", default=4)
+JWT_REFRESH_MINUTES = env_int("JWT_REFRESH_TOKEN_LIFETIME_MINUTES", default=6)
+
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=JWT_ACCESS_MINUTES),
+    "REFRESH_TOKEN_LIFETIME": timedelta(minutes=JWT_REFRESH_MINUTES),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
     "UPDATE_LAST_LOGIN": True,
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
-
+# ==============================================================================
+# CONFIGURATION DYNAMIQUE DES SESSIONS (LIÉE AU .ENV)
+# ==============================================================================
 SESSION_ENGINE = "django.contrib.sessions.backends.db"
-SESSION_COOKIE_AGE = env_int("SESSION_COOKIE_AGE", 1209600)
-SESSION_SAVE_EVERY_REQUEST = env_bool("SESSION_SAVE_EVERY_REQUEST", False)
+SESSION_COOKIE_AGE = env_int("SESSION_COOKIE_AGE", 120)
+SESSION_SAVE_EVERY_REQUEST = env_bool("SESSION_SAVE_EVERY_REQUEST", True)
+
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SECURE = env_bool("SESSION_COOKIE_SECURE", not DEBUG)
 SESSION_COOKIE_SAMESITE = os.getenv("SESSION_COOKIE_SAMESITE", "Lax")
+
 CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_SECURE = env_bool("CSRF_COOKIE_SECURE", not DEBUG)
 CSRF_COOKIE_SAMESITE = os.getenv("CSRF_COOKIE_SAMESITE", "Lax")
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
-CORS_ALLOWED_ORIGINS = env_list("CORS_ALLOWED_ORIGINS", [])
-CORS_ALLOW_CREDENTIALS = env_bool("CORS_ALLOW_CREDENTIALS", False)
-CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS", [])
+# ==============================================================================
+# CONFIGURATION DYNAMIQUE CORS ET CSRF ORIGINS (LIÉE AU .ENV)
+# ==============================================================================
+CORS_ALLOWED_ORIGINS = env_list("CORS_ALLOWED_ORIGINS", ["http://localhost:3000", "http://127.0.0.1:3000"])
+CORS_ALLOW_CREDENTIALS = env_bool("CORS_ALLOW_CREDENTIALS", True)
+CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS", ["http://localhost:3000", "http://127.0.0.1:3000"])
 
-NOVA_RBAC_RULES = {
-    "GET:/auth/me/": "auth.user.read",
-    "GET:/auth/session/me/": "auth.user.read",
-    "POST:/authorization/users/assign-role/": "auth.roles.assign",
-}
+
+# ==============================================================================
+# CONFIGURATION DE L'ENVOI D'EMAILS (TESTS EN CONSOLE)
+# ==============================================================================
+if DEBUG:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+else:
+    # Configuration pour la production (SMTP, SendGrid, Mailgun, etc.)
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+    EMAIL_HOST = os.getenv("EMAIL_HOST")
+    EMAIL_PORT = env_int("EMAIL_PORT", 587)
+    EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
+    EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
+    EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True)
+
+DEFAULT_FROM_EMAIL = "NOVA Support <noreply@nova.ci>"

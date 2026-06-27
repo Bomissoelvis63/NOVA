@@ -1,3 +1,4 @@
+# apps/authentication/serializers.py
 # Serializers d'authentification de NOVA.
 # Ils couvrent le login JWT et le login par session serveur.
 # Ils valident les credentials sans exposer les mots de passe.
@@ -15,6 +16,7 @@ from apps.accounts.serializers import UserSerializer
 class LoginSerializer(TokenObtainPairSerializer):
     def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
         data: dict[str, Any] = dict(super().validate(attrs))
+        # Utilise le UserSerializer mis a jour qui retourne les "groups" a Flutter
         data["user"] = UserSerializer(self.user).data
         return data
 
